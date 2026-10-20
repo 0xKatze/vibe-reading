@@ -48,7 +48,7 @@ https://github.com/aaaddress1/vibe-reading
 • Translator / Language Detector API 自 Chrome 138 起免開 flag
 • Gemini Nano（AI 摘要 / 反白問答 / 翻譯備援）需於 chrome://flags 啟用 Prompt API，並於 chrome://components 下載地端模型（約 2.4GB，硬體門檻較高）
 • 或 Microsoft Edge 148 以上（桌面版）：翻譯與語言偵測免設定；AI 摘要 / 反白問答目前僅 Edge Canary / Dev 可用（需於 edge://flags 啟用「Prompt API for on-device language model」）
-• Android 版 Edge：翻譯使用本機翻譯模型（AI 摘要 / 反白問答無法使用）；不支援 iOS
+• Android 版 Edge：翻譯使用本機翻譯模型（AI 摘要 / 反白問答無法使用）；iOS Safari（MVP）目前支援整頁翻譯、選取翻譯與基本設定，PDF 雙欄檢視器與 AI 摘要 / 反白問答尚未提供
 
 開放原始碼：https://github.com/aaaddress1/vibe-reading
 

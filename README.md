@@ -67,6 +67,7 @@
   - 品質與速度不如內建 AI；AI 摘要／反白問答仍需 Gemini Nano
   - 桌面版也能試用：到設定頁把「翻譯引擎」改成「本機翻譯模型」
 - **📂 開啟本機 PDF 檔案（v1.7 新增）**：檢視器上方 📂 按鈕可直接選檔或拖曳 PDF，不需要「允許存取檔案網址」（手機上就是用這個方式開 PDF）
+- **📱 iOS Safari MVP（新）**：先支援一般網頁的整頁翻譯、選取翻譯與基本設定；PDF 雙欄檢視器、AI 摘要／反白問答將於後續版本提供
 - **🌗 暗黑主題、完全離線、零 API Key**
 
 ## 📦 安裝
@@ -195,7 +196,7 @@ Chrome 的 `commands.suggested_key` 只是建議快捷鍵；如果 `Alt+T` 已�
 - 或 Microsoft Edge **148+**（桌面版；AI 摘要 / 反白問答目前僅 Edge Canary / Dev 可用，見〈安裝〉）
 - **Android 版 Edge** 等沒有內建 AI 的 Chromium 瀏覽器：翻譯改用本機翻譯模型（見上方〈功能〉），AI 摘要／反白問答無法使用
   - Android 版 Chrome 不支援擴充功能；Android 版 Edge 請從 [Edge 外掛程式商店](https://microsoftedge.microsoft.com/addons/detail/%E6%B0%9B%E5%9C%8D%E9%96%B1%E8%AE%80-vibe-reading/dapinmajdflnihlikbpdjiaaodcefekl) 安裝
-- 不支援 iOS
+- **iOS Safari（MVP）**：目前僅支援一般網頁翻譯（整頁／選取）與基本設定；PDF 雙欄檢視器、AI 摘要／反白問答尚未提供
 
 ## 🙏 致謝
 
@@ -264,6 +265,7 @@ MIT License
   - Slower and lower quality than the built-in AI; AI Summary / Ask AI still need Gemini Nano
   - To try it on desktop, set "翻譯引擎" (translation engine) to "本機翻譯模型" (local model) in the options page
 - **📂 Open a local PDF file (new in v1.7)**: the 📂 button in the viewer opens a file picker (or drop a PDF), no file-URL permission needed — this is how you open PDFs on a phone
+- **📱 iOS Safari MVP (new)**: currently supports regular-webpage full-page translation, selection translation, and basic settings. PDF two-pane viewer and AI Summary / Ask AI are planned for follow-up releases
 
 ## Install
 
@@ -287,6 +289,17 @@ Chrome extensions cannot read `file://` local file URLs by default. To translate
 3. Turn on **Allow access to file URLs**
 
 Online PDFs still work without this permission, but local PDFs will fail to load until it is enabled.
+
+## iOS Safari packaging (for contributors)
+
+The repository now includes Safari Web Extension compatibility shims for iOS MVP web translation.  
+To generate the iOS container app, run this command on macOS with Xcode:
+
+```bash
+xcrun safari-web-extension-converter /absolute/path/to/vibe-reading --project-location /absolute/path/to/output --app-name "Vibe Reading iOS"
+```
+
+Then open the generated Xcode project, select your Team/Bundle ID, and archive for TestFlight/App Store.
 
 ## Keyboard Shortcuts
 
@@ -334,7 +347,7 @@ Open `chrome://extensions/shortcuts`, find Vibe Reading, and confirm that "用�
 - Chrome **138+** on Windows 10/11, macOS 13+, Linux, or Chromebook Plus
 - Or Microsoft Edge **148+** (desktop; AI Summary / Ask-AI currently need Edge Canary / Dev, see Install)
 - Edge for Android and other Chromium browsers without built-in AI: translation uses the local model (see Features); AI Summary / Ask-AI are unavailable. Chrome for Android does not support extensions; install from [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/%E6%B0%9B%E5%9C%8D%E9%96%B1%E8%AE%80-vibe-reading/dapinmajdflnihlikbpdjiaaodcefekl) on Edge for Android.
-- Not available on iOS.
+- iOS Safari (MVP): webpage translation (full page / selection) and basic settings are available; PDF viewer and AI Summary / Ask-AI are not yet available.
 
 ## 🙏 Acknowledgements
 

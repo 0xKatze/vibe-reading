@@ -85,6 +85,11 @@
   transform: none;
   pointer-events: auto;
 }
+#__vibe_toolbar.vibe-touch .vibe-panel {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
 
 #__vibe_toolbar .vibe-tb-lang {
   background: #2b3140;
@@ -166,4 +171,30 @@
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
   font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
   white-space: pre-wrap;
+}
+
+#__vibe_sel_btn {
+  all: revert;
+  position: absolute;
+  z-index: 2147483647;
+  display: none;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid #3a4150;
+  background: #1f2430;
+  color: #f0f0f0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font: 13px/1.2 -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+@media (max-width: 720px) {
+  #__vibe_toolbar.vibe-touch {
+    right: 10px;
+    bottom: 10px;
+    max-width: calc(100vw - 20px);
+  }
+  #__vibe_toolbar.vibe-touch .vibe-panel {
+    max-width: calc(100vw - 88px);
+    overflow-x: auto;
+  }
 }
