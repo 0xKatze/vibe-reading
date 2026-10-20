@@ -3,6 +3,7 @@
 const sel      = document.getElementById('hoverModifier');
 const engine   = document.getElementById('engine');
 const showBall = document.getElementById('showBall');
+const ballSide = document.getElementById('ballSide');
 const saved    = document.getElementById('saved');
 
 async function refreshShortcut() {
@@ -54,7 +55,8 @@ function renderHiddenSites(sites) {
   }
 }
 
-chrome.storage.local.get(['hoverModifier', 'showBall', 'ballHiddenSites', 'engine'], (cfg) => {
+chrome.storage.local.get(['hoverModifier', 'showBall', 'ballHiddenSites', 'engine', 'ballPos'], (cfg) => {
+  ballSide.value = cfg.ballPos?.side === 'left' ? 'left' : 'right';
   sel.value = cfg.hoverModifier || 'Shift';
   engine.value = cfg.engine === 'local' ? 'local' : 'auto';
   showBall.checked = cfg.showBall !== false;   // default on
@@ -66,6 +68,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.showBall) showBall.checked = changes.showBall.newValue !== false;
   if (changes.ballHiddenSites) renderHiddenSites(changes.ballHiddenSites.newValue || []);
+  if (changes.ballPos) ballSide.value = changes.ballPos.newValue?.side === 'left' ? 'left' : 'right';
 });
 
 sel.addEventListener('change', () => {
@@ -78,4 +81,16 @@ showBall.addEventListener('change', () => {
 
 engine.addEventListener('change', () => {
   chrome.storage.local.set({ engine: engine.value }, flashSaved);
+});
+
+// Ball position ({ side, y }): changing the side keeps the height the user dragged
+// it to; "重設位置" also drops the height so the ball returns to the bottom.
+ballSide.addEventListener('change', () => {
+  chrome.storage.local.get('ballPos', ({ ballPos }) => {
+    chrome.storage.local.set({ ballPos: { side: ballSide.value, y: ballPos?.y ?? null } }, flashSaved);
+  });
+});
+
+document.getElementById('resetBallPos').addEventListener('click', () => {
+  chrome.storage.local.set({ ballPos: { side: ballSide.value, y: null } }, flashSaved);
 });

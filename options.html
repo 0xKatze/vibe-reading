@@ -59,9 +59,23 @@
     <div class="row">
       <div>
         <label for="showBall">在網頁顯示懸浮球</label>
-        <div class="hint">常駐右下角的翻譯球（點擊＝整頁翻譯，預設開啟懸停翻譯）。關閉後仍可用工具列圖示／<code>Alt+T</code>／右鍵選單翻譯。</div>
+        <div class="hint">常駐畫面邊緣的翻譯球（點擊＝整頁翻譯，預設開啟懸停翻譯）。關閉後仍可用工具列圖示／<code>Alt+T</code>／右鍵選單翻譯。</div>
       </div>
       <input type="checkbox" id="showBall">
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="ballSide">懸浮球位置</label>
+        <div class="hint">翻譯球停靠在畫面左側或右側。也可以直接在網頁上<strong>拖動</strong>翻譯球，放開後會自動貼齊較近的一側並記住位置。</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="ballSide">
+          <option value="right">右側（預設）</option>
+          <option value="left">左側</option>
+        </select>
+        <button type="button" id="resetBallPos" title="回到所選一側的底部">重設位置</button>
+      </div>
     </div>
 
     <div class="row stack">

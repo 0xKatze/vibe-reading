@@ -29,8 +29,10 @@
 }
 
 /* ─── Persistent floating ball + hover-reveal control panel ────────────────────
-   The ball is always visible (bottom-right). Click it to translate the whole
-   page; hover it to slide out the control panel (language, hover toggle, …). */
+   The ball is always visible and docks to the left or right edge. Drag it to
+   move it (it snaps to the nearer edge on release); click it to translate the
+   whole page; hover it to slide out the control panel (language, hover, …).
+   content.js sets left/right/top inline and toggles .vibe-side-left/right. */
 #__vibe_toolbar {
   all: revert;
   position: fixed;
@@ -38,14 +40,28 @@
   bottom: 16px;
   z-index: 2147483647;
   display: flex;
-  flex-direction: row-reverse;   /* ball on the right; panel slides out to its left */
+  flex-direction: row-reverse;   /* right side: ball on the right, panel to its left */
   align-items: center;
   gap: 8px;
   font: 13px/1.2 -apple-system, "Segoe UI", system-ui, sans-serif;
 }
+/* Entrance pop; removed on animationend so the snap animation can use transform. */
+#__vibe_toolbar.vibe-entering { animation: vibe-ball-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+#__vibe_toolbar.vibe-side-left { flex-direction: row; }   /* left side: ball first, panel to its right */
+#__vibe_toolbar.vibe-leaving { animation: vibe-ball-leave 0.25s ease-in forwards; pointer-events: none; }
 #__vibe_toolbar * { all: revert; box-sizing: border-box; font: inherit; }
 
+@keyframes vibe-ball-enter {
+  from { opacity: 0; transform: scale(0.3) translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vibe-ball-leave {
+  to { opacity: 0; transform: scale(0.3); }
+}
+
 #__vibe_toolbar .vibe-ball {
+  position: relative;
+  flex-shrink: 0;
   width: 44px;
   height: 44px;
   display: flex;
@@ -57,10 +73,81 @@
   border: 1px solid #3a4150;
   border-radius: 50%;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-  cursor: pointer;
+  cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;            /* let pointer events drive dragging on touch screens */
+  transform: rotate(var(--vibe-tilt, 0deg)) scale(var(--vibe-scale, 1));
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease, background-color 0.3s ease, border-color 0.3s ease;
 }
+#__vibe_toolbar .vibe-ball-icon {
+  display: inline-block;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#__vibe_toolbar .vibe-ball:hover {
+  --vibe-scale: 1.08;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(95, 211, 139, 0.18);
+}
+#__vibe_toolbar .vibe-ball:hover .vibe-ball-icon { transform: rotate(-10deg) scale(1.1); }
+#__vibe_toolbar .vibe-ball:active { --vibe-scale: 0.92; }
 #__vibe_toolbar.vibe-active .vibe-ball { background: #2f7d52; border-color: #36995f; }
+
+/* Click ripple (restarted from JS by re-adding .vibe-ripple). */
+#__vibe_toolbar .vibe-ball::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 2px solid rgba(95, 211, 139, 0.7);
+  opacity: 0;
+  pointer-events: none;
+}
+#__vibe_toolbar .vibe-ball.vibe-ripple::after { animation: vibe-ripple 0.55s ease-out; }
+@keyframes vibe-ripple {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.9); }
+}
+
+/* Page translated: a slow breathing halo. */
+#__vibe_toolbar.vibe-active .vibe-ball { animation: vibe-breathe 2.6s ease-in-out infinite; }
+@keyframes vibe-breathe {
+  0%, 100% { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(95, 211, 139, 0.35); }
+  50%      { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 0 7px rgba(95, 211, 139, 0); }
+}
+
+/* Translating in progress: a spinning arc around the ball. */
+#__vibe_toolbar .vibe-ball::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #5fd38b;
+  border-right-color: rgba(95, 211, 139, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+#__vibe_toolbar.vibe-busy .vibe-ball::before { opacity: 1; animation: vibe-spin 0.9s linear infinite; }
+@keyframes vibe-spin { to { transform: rotate(360deg); } }
+
+/* While dragging: lifted, tilted with the motion, no transitions on position. */
+#__vibe_toolbar.vibe-dragging .vibe-ball {
+  --vibe-scale: 1.15;
+  cursor: grabbing;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s linear, box-shadow 0.2s ease;
+}
+/* Landing after a snap: a quick squash-and-stretch. */
+#__vibe_toolbar.vibe-landed .vibe-ball { animation: vibe-land 0.4s ease-out; }
+@keyframes vibe-land {
+  0%   { transform: scale(1.15); }
+  35%  { transform: scaleX(1.12) scaleY(0.88); }
+  65%  { transform: scaleX(0.95) scaleY(1.05); }
+  100% { transform: none; }
+}
 
 #__vibe_toolbar .vibe-panel {
   display: flex;
@@ -72,19 +159,37 @@
   border: 1px solid #3a4150;
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-  max-width: 80vw;
+  max-width: calc(100vw - 92px);
+  overflow: hidden;
   opacity: 0;
-  transform: translateX(12px) scale(0.96);
+  transform: translateX(16px) scale(0.92);
   transform-origin: right center;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-#__vibe_toolbar:hover .vibe-panel,
-#__vibe_toolbar:focus-within .vibe-panel {
+#__vibe_toolbar.vibe-side-left .vibe-panel {
+  transform: translateX(-16px) scale(0.92);
+  transform-origin: left center;
+}
+#__vibe_toolbar:not(.vibe-dragging):hover .vibe-panel,
+#__vibe_toolbar:not(.vibe-dragging):focus-within .vibe-panel {
   opacity: 1;
   transform: none;
   pointer-events: auto;
 }
+/* Panel items fade in one after another. */
+#__vibe_toolbar .vibe-panel > * {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+#__vibe_toolbar:not(.vibe-dragging):hover .vibe-panel > *,
+#__vibe_toolbar:not(.vibe-dragging):focus-within .vibe-panel > * { opacity: 1; transform: none; }
+#__vibe_toolbar .vibe-panel > :nth-child(1) { transition-delay: 0.03s; }
+#__vibe_toolbar .vibe-panel > :nth-child(2) { transition-delay: 0.06s; }
+#__vibe_toolbar .vibe-panel > :nth-child(3) { transition-delay: 0.09s; }
+#__vibe_toolbar .vibe-panel > :nth-child(4) { transition-delay: 0.12s; }
+#__vibe_toolbar .vibe-panel > :nth-child(5) { transition-delay: 0.15s; }
 
 #__vibe_toolbar .vibe-tb-lang {
   background: #2b3140;
@@ -103,8 +208,13 @@
   padding: 4px 9px;
   cursor: pointer;
 }
+#__vibe_toolbar .vibe-tb-settings,
+#__vibe_toolbar .vibe-tb-hide { transition: background-color 0.15s ease, transform 0.15s ease; }
 #__vibe_toolbar .vibe-tb-settings:hover,
 #__vibe_toolbar .vibe-tb-hide:hover { background: #4a5263; }
+#__vibe_toolbar .vibe-tb-settings:hover { transform: rotate(60deg); }
+#__vibe_toolbar .vibe-tb-settings:active,
+#__vibe_toolbar .vibe-tb-hide:active { transform: scale(0.9); }
 #__vibe_toolbar .vibe-tb-status {
   color: #9fb3c8;
   white-space: nowrap;
@@ -118,7 +228,12 @@
   position: absolute;
   right: 0;
   bottom: 100%;
-  display: none;
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transform-origin: bottom right;
+  transition: opacity 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s linear 0.2s;
   flex-direction: column;
   gap: 4px;
   min-width: 180px;
@@ -139,7 +254,25 @@
   top: 100%;
   height: 8px;
 }
-#__vibe_toolbar .vibe-hide-menu.vibe-open { display: flex; }
+#__vibe_toolbar .vibe-hide-menu.vibe-open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s;
+}
+#__vibe_toolbar.vibe-side-left .vibe-hide-menu { right: auto; left: 0; transform-origin: bottom left; }
+/* Ball in the top half of the screen: open the menu downward instead. */
+#__vibe_toolbar.vibe-upper .vibe-hide-menu {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 8px;
+  transform: translateY(-6px) scale(0.96);
+  transform-origin: top right;
+}
+#__vibe_toolbar.vibe-upper.vibe-side-left .vibe-hide-menu { transform-origin: top left; }
+#__vibe_toolbar.vibe-upper .vibe-hide-menu.vibe-open { transform: none; }
+#__vibe_toolbar.vibe-upper .vibe-hide-menu::after { top: auto; bottom: 100%; }
 #__vibe_toolbar .vibe-hide-menu button {
   background: #2b3140;
   color: #e6e6e6;
@@ -151,6 +284,18 @@
 }
 #__vibe_toolbar .vibe-hide-menu button:hover { background: #3a4150; }
 #__vibe_toolbar .vibe-hide-note { color: #9fb3c8; font-size: 11px; padding: 2px 2px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  #__vibe_toolbar,
+  #__vibe_toolbar *,
+  #__vibe_toolbar *::before,
+  #__vibe_toolbar *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
 
 /* ─── Selection popup card ──────────────────────────────────────────────────── */
 #__vibe_sel_card {
