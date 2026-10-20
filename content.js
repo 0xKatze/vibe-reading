@@ -25,10 +25,13 @@
   const TRANSLATED_ATTR = 'data-vibe-translated';
   const TOOLBAR_ID      = '__vibe_toolbar';
   const SELCARD_ID      = '__vibe_sel_card';
+  const SELBTN_ID       = '__vibe_sel_btn';
 
   const BLOCK_SELECTOR = 'p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, dd, dt, figcaption, caption';
   const INNER_HOSTS    = new Set(['LI', 'TD', 'TH', 'DD', 'DT', 'CAPTION']);
   const SKIP_TAGS      = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'TEXTAREA', 'SVG', 'CANVAS', 'KBD', 'SAMP']);
+  const PLATFORM       = window.VibePlatform || { isIOS: false, isTouch: false };
+  const TOUCH_MODE     = PLATFORM.isIOS || PLATFORM.isTouch;
 
   // ─── State ──────────────────────────────────────────────────────────────────
   let translator   = null;          // cached engine from VT.initTranslator (+ _target)
@@ -56,16 +59,17 @@
   let hiddenSites = [];
   const ballAllowed = () => showBallAll && !(SITE && hiddenSites.includes(SITE));
 
-  chrome.storage.local.get(['targetLang', 'hoverModifier', 'showBall', 'ballHiddenSites'], (cfg) => {
+  (async () => {
+    const cfg = await chrome.storage.local.get(['targetLang', 'hoverModifier', 'showBall', 'ballHiddenSites']);
     if (cfg.targetLang) curTarget = cfg.targetLang;
     if (cfg.hoverModifier) hoverModifier = cfg.hoverModifier;
     showBallAll = cfg.showBall !== false;   // default-on
     hiddenSites = cfg.ballHiddenSites || [];
     const sel = document.querySelector(`#${TOOLBAR_ID} .vibe-tb-lang`);
     if (sel) sel.value = curTarget;
-    if (ballAllowed()) { ensureToolbar(); setHover(true); }
+    if (ballAllowed()) { ensureToolbar(); setHover(!TOUCH_MODE); }
     updateHoverHint();
-  });
+  })();
 
   // Live-apply options-page / cross-tab changes.
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -80,7 +84,7 @@
       if (changes.showBall) showBallAll = changes.showBall.newValue !== false;
       if (changes.ballHiddenSites) hiddenSites = changes.ballHiddenSites.newValue || [];
       if (!ballAllowed()) removeToolbar();
-      else if (!document.getElementById(TOOLBAR_ID)) { ensureToolbar(); setHover(true); }
+      else if (!document.getElementById(TOOLBAR_ID)) { ensureToolbar(); setHover(!TOUCH_MODE); }
     }
   });
 
@@ -334,9 +338,13 @@
   }
   function updateHoverHint() {
     const lab = document.querySelector(`#${TOOLBAR_ID} .vibe-tb-hover`);
-    if (lab) lab.title = `按住 ${modLabel()} 翻譯游標所指的段落（修飾鍵可在擴充設定頁更改）`;
+    if (lab) {
+      lab.title = TOUCH_MODE
+        ? '觸控裝置不支援修飾鍵懸停翻譯'
+        : `按住 ${modLabel()} 翻譯游標所指的段落（修飾鍵可在擴充設定頁更改）`;
+    }
     const txt = document.querySelector(`#${TOOLBAR_ID} .vibe-tb-hovertxt`);
-    if (txt) txt.textContent = `懸停(${modLabel()})`;
+    if (txt) txt.textContent = TOUCH_MODE ? '懸停(桌面)' : `懸停(${modLabel()})`;
   }
 
   // ─── Selection mode (popup card) ────────────────────────────────────────────────
@@ -354,6 +362,7 @@
       card.className = 'vibe-sel-card';
       document.documentElement.appendChild(card);
       document.addEventListener('mousedown', (e) => { if (!card.contains(e.target)) hideSelCard(); }, true);
+      document.addEventListener('touchstart', (e) => { if (!card.contains(e.target)) hideSelCard(); }, true);
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideSelCard(); }, true);
     }
     card.textContent = text;
@@ -364,6 +373,37 @@
     card.style.display = 'block';
   }
   function hideSelCard() { const c = document.getElementById(SELCARD_ID); if (c) c.style.display = 'none'; }
+  function hideSelButton() { const b = document.getElementById(SELBTN_ID); if (b) b.style.display = 'none'; }
+
+  function ensureSelButton() {
+    if (!TOUCH_MODE) return null;
+    let btn = document.getElementById(SELBTN_ID);
+    if (btn) return btn;
+    btn = document.createElement('button');
+    btn.id = SELBTN_ID;
+    btn.type = 'button';
+    btn.textContent = '翻譯選取';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideSelButton();
+      translateSelection();
+    });
+    document.documentElement.appendChild(btn);
+    return btn;
+  }
+
+  function updateSelButton() {
+    if (!TOUCH_MODE) return;
+    const selText = (window.getSelection && window.getSelection().toString() || '').trim();
+    const rect = selectionRect();
+    if (!selText || !rect) { hideSelButton(); return; }
+    const btn = ensureSelButton();
+    if (!btn) return;
+    btn.style.left = `${Math.max(8, rect.left + window.scrollX)}px`;
+    btn.style.top = `${Math.max(8, rect.bottom + window.scrollY + 8)}px`;
+    btn.style.display = 'block';
+  }
 
   async function translateSelection(text) {
     const sel = (text || (window.getSelection && window.getSelection().toString()) || '').trim();
@@ -396,6 +436,7 @@
     const bar = document.createElement('div');
     bar.id = TOOLBAR_ID;
     bar.className = 'vibe-toolbar';
+    if (TOUCH_MODE) bar.classList.add('vibe-touch');
     const opts = VT.TARGET_LANGS.map((t) => `<option value="${t.code}">${t.name}</option>`).join('');
     bar.innerHTML =
       '<div class="vibe-ball" title="點擊翻譯整頁（懸浮選單可調整）">📖</div>' +
@@ -424,11 +465,11 @@
     bar.querySelector('.vibe-tb-hide').addEventListener('click', () => hideMenu.classList.toggle('vibe-open'));
     bar.addEventListener('mouseleave', () => hideMenu.classList.remove('vibe-open'));
     bar.querySelector('.vibe-hide-once').addEventListener('click', removeToolbar);
-    bar.querySelector('.vibe-hide-site')?.addEventListener('click', () => {
-      chrome.storage.local.get('ballHiddenSites', ({ ballHiddenSites = [] }) => {
-        if (!ballHiddenSites.includes(SITE)) ballHiddenSites.push(SITE);
-        chrome.storage.local.set({ ballHiddenSites });   // onChanged removes the ball
-      });
+    bar.querySelector('.vibe-tb-hover input').disabled = TOUCH_MODE;
+    bar.querySelector('.vibe-hide-site')?.addEventListener('click', async () => {
+      const { ballHiddenSites = [] } = await chrome.storage.local.get('ballHiddenSites');
+      if (!ballHiddenSites.includes(SITE)) ballHiddenSites.push(SITE);
+      await chrome.storage.local.set({ ballHiddenSites });   // onChanged removes the ball
     });
     bar.querySelector('.vibe-hide-all').addEventListener('click', () => {
       chrome.storage.local.set({ showBall: false });
@@ -452,4 +493,13 @@
       status(`懸停翻譯已開啟：按住 ${modLabel()} 翻游標所指的段落`);
     }
   });
+
+  if (TOUCH_MODE) {
+    document.addEventListener('selectionchange', () => setTimeout(updateSelButton, 0), true);
+    document.addEventListener('scroll', hideSelButton, true);
+    document.addEventListener('touchstart', (e) => {
+      const btn = document.getElementById(SELBTN_ID);
+      if (btn && !btn.contains(e.target)) hideSelButton();
+    }, true);
+  }
 })();

@@ -1,3 +1,4 @@
+import './platform.js';
 import * as localMT from './local-mt.js';
 
 const MENU_PAGE      = 'vibe-translate-page';
@@ -6,8 +7,16 @@ const MENU_HOVER     = 'vibe-translate-hover';
 const MENU_SHOW_BALL = 'vibe-show-ball';
 const MENU_OPTIONS   = 'vibe-options';
 
+const PLATFORM = globalThis.VibePlatform || { isIOS: false };
+
 // ─── Open the two-pane PDF translation viewer for a given tab ──────────────────
-async function openViewer(tab) {
+async function openViewer(tab, reason = '') {
+  if (PLATFORM.isIOS) {
+    const guide = new URL(chrome.runtime.getURL('ios-mvp.html'));
+    if (reason) guide.searchParams.set('reason', reason);
+    await chrome.tabs.create({ url: guide.toString() });
+    return;
+  }
   let viewer = chrome.runtime.getURL('viewer.html');
   if (tab?.url && isPdf(tab.url)) {
     viewer += '?file=' + encodeURIComponent(tab.url);
@@ -42,8 +51,8 @@ function canInject(url) {
 async function handleTrigger(tab) {
   if (!tab || !tab.id) return;
   const url = tab.url || '';
-  if (isPdf(url)) return openViewer(tab);
-  if (!canInject(url)) return openViewer(tab);
+  if (isPdf(url)) return openViewer(tab, 'pdf');
+  if (!canInject(url)) return openViewer(tab, 'unsupported');
   // The content script is normally already present (static content_scripts), so
   // message it directly; only fall back to injecting for tabs opened before the
   // extension was installed/updated.
@@ -55,7 +64,7 @@ async function handleTrigger(tab) {
       await chrome.tabs.sendMessage(tab.id, { type: 'VIBE_TOGGLE_PAGE' });
     } catch (e) {
       console.warn('[氛圍閱讀] 內容腳本注入失敗，改開檢視器：', e);
-      openViewer(tab);
+      openViewer(tab, 'inject');
     }
   }
 }
@@ -92,39 +101,38 @@ async function enableHover(tab) {
 }
 
 // ─── Context menu (right-click) ────────────────────────────────────────────────
-function setupMenu() {
+async function setupMenu() {
   if (!chrome.contextMenus) return;   // not available on mobile (Edge for Android)
-  chrome.contextMenus.removeAll(() => {
-    // contexts:['all'] so the PDF native viewer (whose frame URL is a
-    // chrome-extension:// address) still surfaces the entry; handleTrigger
-    // routes PDFs to the viewer regardless.
-    chrome.contextMenus.create({
-      id: MENU_PAGE,
-      title: '氛圍閱讀：翻譯這個頁面 / 切回原文',
-      contexts: ['all'],
-    });
-    chrome.contextMenus.create({
-      id: MENU_SELECTION,
-      title: '氛圍閱讀：翻譯選取的文字',
-      contexts: ['selection'],
-    });
-    chrome.contextMenus.create({
-      id: MENU_HOVER,
-      title: '氛圍閱讀：開啟懸停翻譯（按住修飾鍵翻該段）',
-      contexts: ['all'],
-    });
-    // Once the floating ball is hidden its ⚙ button is gone too, so these two
-    // entries (page + toolbar-icon menus) are the way back.
-    chrome.contextMenus.create({
-      id: MENU_SHOW_BALL,
-      title: '氛圍閱讀：重新顯示翻譯球',
-      contexts: ['page', 'action'],
-    });
-    chrome.contextMenus.create({
-      id: MENU_OPTIONS,
-      title: '氛圍閱讀：設定（翻譯球、懸停修飾鍵…）',
-      contexts: ['page', 'action'],
-    });
+  await chrome.contextMenus.removeAll();
+  // contexts:['all'] so the PDF native viewer (whose frame URL is a
+  // chrome-extension:// address) still surfaces the entry; handleTrigger
+  // routes PDFs to the viewer regardless.
+  chrome.contextMenus.create({
+    id: MENU_PAGE,
+    title: '氛圍閱讀：翻譯這個頁面 / 切回原文',
+    contexts: ['all'],
+  });
+  chrome.contextMenus.create({
+    id: MENU_SELECTION,
+    title: '氛圍閱讀：翻譯選取的文字',
+    contexts: ['selection'],
+  });
+  chrome.contextMenus.create({
+    id: MENU_HOVER,
+    title: '氛圍閱讀：開啟懸停翻譯（按住修飾鍵翻該段）',
+    contexts: ['all'],
+  });
+  // Once the floating ball is hidden its ⚙ button is gone too, so these two
+  // entries (page + toolbar-icon menus) are the way back.
+  chrome.contextMenus.create({
+    id: MENU_SHOW_BALL,
+    title: '氛圍閱讀：重新顯示翻譯球',
+    contexts: ['page', 'action'],
+  });
+  chrome.contextMenus.create({
+    id: MENU_OPTIONS,
+    title: '氛圍閱讀：設定（翻譯球、懸停修飾鍵…）',
+    contexts: ['page', 'action'],
   });
 }
 
@@ -144,7 +152,10 @@ async function showBallAgain(tab) {
 chrome.runtime.onInstalled.addListener((details) => {
   setupMenu();
   if (details.reason === 'install') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html?welcome=1') });
+    const url = PLATFORM.isIOS
+      ? chrome.runtime.getURL('ios-mvp.html?reason=welcome')
+      : chrome.runtime.getURL('viewer.html?welcome=1');
+    chrome.tabs.create({ url });
   }
 });
 chrome.runtime.onStartup.addListener(setupMenu);
